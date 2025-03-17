@@ -140,7 +140,11 @@
            (x-offset (+ (- (car (window-text-pixel-size nil
                                                         (overlay-start mozc-preedit-overlay)
                                                         (overlay-end mozc-preedit-overlay))))
-                        (line-number-display-width t))))
+                        (line-number-display-width t)))
+           (y-offset (/ (cdr (window-text-pixel-size nil
+                                                     (overlay-start mozc-preedit-overlay)
+                                                     (overlay-end mozc-preedit-overlay)))
+                        2)))
 
       (if (and index-visible focused-index candidates-size)
           (let ((index-label (format "%d/%d" (1+ focused-index) candidates-size)))
@@ -157,7 +161,32 @@
       (mozc-posframe--render (mozc-protobuf-get candidates 'candidate) footer-label focused-index
                              (string-width footer-label))
       (posframe-show (mozc-posframe--get-buffer)
-                     :x-pixel-offset x-offset))))
+                     :poshandler #'posframe-poshandler-point-bottom-left-corner
+                     :x-pixel-offset x-offset
+                     :y-pixel-offset y-offset
+                     ))))
+
+(defun get-face-pixel-height (&optional face)
+  (let* ((height-tenths (face-attribute (or face 'default) :height nil 'default))
+         (frame-height (frame-char-height)) ; Height of default font in pixels
+         (default-height-tenths (face-attribute 'default :height nil 'default))
+         (scale (/ (float height-tenths) default-height-tenths))
+         (pixel-height (round (* frame-height scale))))
+    pixel-height))
+
+(defun get-face-pixel-height-at-point ()
+  "Return the approximate pixel height of the face at point."
+  (interactive)
+  (let* ((face (or
+                (face-at-point t))) ; Fallback to default if no face at point
+         (height-tenths (face-attribute (or face 'default) :height nil 'default))
+         (frame-height (frame-char-height)) ; Height of default font in pixels
+         (default-height-tenths (face-attribute 'default :height nil 'default))
+         (scale (/ (float height-tenths) default-height-tenths))
+         (pixel-height (round (* frame-height scale))))
+    (when (called-interactively-p 'interactive)
+      (message "Face height at point: %d pixels" pixel-height))
+    pixel-height))
 
 ;;;###autoload
 (defun mozc-cand-posframe-update (candidates)
